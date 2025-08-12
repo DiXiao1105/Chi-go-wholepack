@@ -31,8 +31,10 @@ class Place(db.Model):
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    content = db.Column(db.Text, nullable=True)
-    # Additional fields (e.g., timestamps) can be added as needed.
+    place_id = db.Column(db.Integer, db.ForeignKey('place.id'), nullable=False)
+
+    user = db.relationship('User', backref=db.backref('posts', lazy=True))
+    place = db.relationship('Place', backref=db.backref('posts', lazy=True))
 
 # -------------------------------
 # API Endpoints for Users
@@ -41,14 +43,20 @@ class Post(db.Model):
 def get_users():
     query = request.args.get("query")
     role = request.args.get("role")  # Optional role filter
-    users = User.query.filter(
-        or_(
-            User.name.ilike(f"%{query}%"),
-            User.email.ilike(f"%{query}%")
+
+    # If no query is provided, return all users
+    if not query and not role:
+        users = User.query.all()
+    else:
+        users = User.query.filter(
+            or_(
+                User.name.ilike(f"%{query}%") if query else True,
+                User.email.ilike(f"%{query}%") if query else True
+            )
         )
-    )
-    if role:
-        users = users.filter_by(role=role)
+        if role:
+            users = users.filter_by(role=role)
+
     return jsonify([{"id": u.id, "name": u.name, "email": u.email, "role": u.role} for u in users])
 
 @app.route('/api/users', methods=['POST'])
@@ -148,15 +156,13 @@ def delete_place(place_id):
 
 @app.route('/api/places/rankings', methods=['GET'])
 def get_rankings():
-    # Count the number of users referencing each attraction
     attractions = db.session.query(
-        Place.name, db.func.count(Post.user_id).label("userCount")
-    ).join(Post, Place.id == Post.user_id).filter(Place.type == "Attraction").group_by(Place.name).order_by(db.desc("userCount")).limit(5).all()
+        Place.name, db.func.count(Post.id).label("userCount")
+    ).join(Post, Place.id == Post.place_id).filter(Place.type == "Attraction").group_by(Place.name).order_by(db.desc("userCount")).limit(5).all()
 
-    # Count the number of users referencing each restaurant
     restaurants = db.session.query(
-        Place.name, db.func.count(Post.user_id).label("userCount")
-    ).join(Post, Place.id == Post.user_id).filter(Place.type == "Restaurant").group_by(Place.name).order_by(db.desc("userCount")).limit(5).all()
+        Place.name, db.func.count(Post.id).label("userCount")
+    ).join(Post, Place.id == Post.place_id).filter(Place.type == "Restaurant").group_by(Place.name).order_by(db.desc("userCount")).limit(5).all()
 
     return jsonify({
         "attractions": [{"name": a[0], "userCount": a[1]} for a in attractions],
@@ -167,40 +173,42 @@ def get_rankings():
 # API Endpoints for Posts
 # -------------------------------
 @app.route('/api/posts', methods=['GET'])
-def get_posts():
-    query = request.args.get("query")
-    if query:
-        q = f"%{query.lower()}%"
-        posts = Post.query.filter(Post.content.ilike(q)).all()
-    else:
-        posts = Post.query.all()
-    return jsonify([{"id": p.id, "user_id": p.user_id, "content": p.content} for p in posts])
+def get_all_posts():
+    posts = Post.query.all()
+    return jsonify([
+        {
+            "id": post.id,
+            "user_name": post.user.name,
+            "place_name": post.place.name,
+            "place_type": post.place.type
+        }
+        for post in posts
+    ])
 
 @app.route('/api/posts', methods=['POST'])
 def add_post():
     data = request.get_json()
-    new_post = Post(
-        user_id=data.get("user_id"),
-        content=data.get("content")
-    )
+    user_id = data.get("user_id")
+    place_id = data.get("place_id")
+
+    # Check if the user already added the place
+    existing_post = Post.query.filter_by(user_id=user_id, place_id=place_id).first()
+    if existing_post:
+        return jsonify({"message": "Place already added"}), 400
+
+    new_post = Post(user_id=user_id, place_id=place_id)
     db.session.add(new_post)
     db.session.commit()
-    return jsonify({
-        "message": "Post added",
-        "post": {"id": new_post.id, "user_id": new_post.user_id, "content": new_post.content}
-    }), 201
+    return jsonify({"message": "Place added to user's list"}), 201
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
 def update_post(post_id):
     data = request.get_json()
     post = Post.query.get_or_404(post_id)
     post.user_id = data.get("user_id", post.user_id)
-    post.content = data.get("content", post.content)
+    post.place_id = data.get("place_id", post.place_id)
     db.session.commit()
-    return jsonify({
-        "message": "Post updated",
-        "post": {"id": post.id, "user_id": post.user_id, "content": post.content}
-    })
+    return jsonify({"message": "Post updated"})
 
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
 def delete_post(post_id):
@@ -208,6 +216,14 @@ def delete_post(post_id):
     db.session.delete(post)
     db.session.commit()
     return jsonify({"message": "Post deleted"})
+
+@app.route('/api/posts/<int:user_id>', methods=['GET'])
+def get_user_posts(user_id):
+    posts = Post.query.filter_by(user_id=user_id).all()
+    return jsonify([
+        {"place_id": post.place_id, "place_name": post.place.name, "place_type": post.place.type}
+        for post in posts
+    ])
 
 # -------------------------------
 # API Endpoint for Login
