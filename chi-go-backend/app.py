@@ -259,9 +259,17 @@ def update_place(place_id):
     place.location_address = data.get('location_address', place.location_address)
     # Accept both camelCase and snake_case for is_active, and always update if present
     if 'is_active' in data:
-        place.is_active = bool(data['is_active'])
+        val = data['is_active']
+        if isinstance(val, str):
+            place.is_active = val.lower() == 'true'
+        else:
+            place.is_active = bool(val)
     elif 'isActive' in data:
-        place.is_active = bool(data['isActive'])
+        val = data['isActive']
+        if isinstance(val, str):
+            place.is_active = val.lower() == 'true'
+        else:
+            place.is_active = bool(val)
     place.updated_at = datetime.datetime.utcnow()
     db.session.commit()
     return jsonify({'success': True})
@@ -290,6 +298,10 @@ def delete_user(user_id):
     user = User.query.get(user_id)
     if not user:
         return jsonify({'message': 'User not found'}), 404
+    # Delete all checklists for this user first
+    Checklist.query.filter_by(user_id=user_id).delete()
+    # Delete all posts for this user
+    Post.query.filter_by(user_id=user_id).delete()
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
@@ -487,9 +499,11 @@ def update_post(post_id):
     post.title = data.get('title', post.title)
     post.description = data.get('description', post.description)
     post.checklist = data.get('checklist', post.checklist)
+    if 'is_public' in data:
+        post.is_public = data['is_public']
     post.updated_at = datetime.datetime.utcnow()
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'id': post.id, 'title': post.title, 'description': post.description, 'is_public': post.is_public, 'checklist': post.checklist, 'user_id': post.user_id, 'created_at': post.created_at, 'updated_at': post.updated_at})
 
 @app.route('/api/posts/<string:post_id>', methods=['DELETE'])
 def delete_post(post_id):

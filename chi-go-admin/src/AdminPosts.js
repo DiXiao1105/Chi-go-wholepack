@@ -79,23 +79,7 @@ export default function AdminPosts() {
                   placeholder="Description"
                   required
                 />
-                <label>
-                  Public:
-                  <select
-                    name="is_public"
-                    value={editingPost.is_public ? "true" : "false"}
-                    onChange={e => handleEditChange({
-                      target: {
-                        name: "is_public",
-                        value: e.target.value === "true",
-                        type: "checkbox"
-                      }
-                    })}
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                </label>
+                {/* Public field removed as it should not be editable */}
                 <button type="submit">Save</button>
                 <button type="button" onClick={cancelEdit}>
                   Cancel

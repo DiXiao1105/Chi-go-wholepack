@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from "react";
 
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
 
   // Fetch all users from backend API
-  useEffect(() => {
+  const fetchUsers = () => {
     fetch("/api/users")
       .then((res) => res.json())
       .then((data) => setUsers(data))
       .catch((err) => console.error("Error fetching users:", err));
+  };
+
+  useEffect(() => {
+    fetchUsers();
   }, []);
 
   // Handle input changes for editing
@@ -30,11 +35,9 @@ export default function AdminUsers() {
       body: JSON.stringify(editingUser),
     })
       .then((res) => res.json())
-      .then((data) => {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === data.id ? data : u))
-        );
+      .then(() => {
         setEditingUser(null);
+        fetchUsers();
       })
       .catch((err) => console.error("Error updating user:", err));
   };
@@ -48,7 +51,7 @@ export default function AdminUsers() {
     fetch(`/api/users/${userId}`, { method: "DELETE" })
       .then((res) => res.json())
       .then(() => {
-        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        fetchUsers();
       })
       .catch((err) => console.error("Error deleting user:", err));
   };

@@ -40,7 +40,10 @@ export default function AdminPlaces() {
     const { name, value, type, checked } = e.target;
     setEditingPlace((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]:
+        name === "is_active"
+          ? (type === "checkbox" ? checked : value === "true")
+          : (type === "checkbox" ? checked : value),
     }));
   };
 
@@ -96,23 +99,7 @@ export default function AdminPlaces() {
           <input name="location_lat" value={editingPlace.location_lat} onChange={handleEditChange} placeholder="Latitude" />
           <input name="location_lng" value={editingPlace.location_lng} onChange={handleEditChange} placeholder="Longitude" />
           <input name="image" value={editingPlace.image || ''} onChange={handleEditChange} placeholder="Image URL" />
-          <label>
-            Active:
-            <select
-              name="is_active"
-              value={editingPlace.is_active ? "true" : "false"}
-              onChange={e => handleEditChange({
-                target: {
-                  name: "is_active",
-                  value: e.target.value === "true",
-                  type: "checkbox"
-                }
-              })}
-            >
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </label>
+          {/* Active field removed as requested */}
           <button type="submit">Save</button>
                   <td>
                     {place.image ? (
