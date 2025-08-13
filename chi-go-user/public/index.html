@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Chi-Go - Your Smart Chicago Trip Planner"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>Chi-Go - Chicago Trip Planner</title>
+    
+    <!-- Google Maps API -->
+    <script
+      async
+      defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBFHlDMl-qAhagLLsWWvqU6E9gBsAjSWCI&libraries=places&callback=initMap"
+    ></script>
+    <script>
+      // Initialize Google Maps callback
+      window.initMap = function() {
+        console.log('Google Maps API loaded successfully');
+        window.googleMapsLoaded = true;
+        // Dispatch event to notify components
+        window.dispatchEvent(new Event('googleMapsLoaded'));
+      };
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
