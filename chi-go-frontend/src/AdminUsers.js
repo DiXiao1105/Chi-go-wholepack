@@ -4,7 +4,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
 
-  // Fetch users from backend API
+  // Fetch all users from backend API
   useEffect(() => {
     fetch("/api/users")
       .then((res) => res.json())
@@ -12,13 +12,16 @@ export default function AdminUsers() {
       .catch((err) => console.error("Error fetching users:", err));
   }, []);
 
-  // Handle editing change
+  // Handle input changes for editing
   const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditingUser((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setEditingUser((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
-  // Save edit by calling PUT endpoint
+  // Save edited user
   const saveEdit = (e) => {
     e.preventDefault();
     fetch(`/api/users/${editingUser.id}`, {
@@ -28,9 +31,8 @@ export default function AdminUsers() {
     })
       .then((res) => res.json())
       .then((data) => {
-        // Update local state with updated user from response
         setUsers((prev) =>
-          prev.map((u) => (u.id === data.user.id ? data.user : u))
+          prev.map((u) => (u.id === data.id ? data : u))
         );
         setEditingUser(null);
       })
@@ -38,12 +40,11 @@ export default function AdminUsers() {
   };
 
   // Cancel editing
-  const cancelEdit = () => {
-    setEditingUser(null);
-  };
+  const cancelEdit = () => setEditingUser(null);
 
-  // Delete a user via backend API
+  // Delete a user
   const deleteUser = (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
     fetch(`/api/users/${userId}`, { method: "DELETE" })
       .then((res) => res.json())
       .then(() => {
@@ -56,22 +57,48 @@ export default function AdminUsers() {
     <div className="container">
       <h2>Admin · Manage Users</h2>
       <ul className="list">
+        {users.length === 0 && <li className="muted">No users found.</li>}
         {users.map((u) => (
           <li key={u.id} className="list-row">
             {editingUser && editingUser.id === u.id ? (
               <form onSubmit={saveEdit} className="edit-form">
                 <input
-                  name="name"
-                  value={editingUser.name}
+                  name="username"
+                  value={editingUser.username}
                   onChange={handleEditChange}
-                  placeholder="Name"
+                  placeholder="Username"
+                  required
                 />
                 <input
                   name="email"
                   value={editingUser.email}
                   onChange={handleEditChange}
                   placeholder="Email"
+                  required
                 />
+                <input
+                  name="avatar"
+                  value={editingUser.avatar || ""}
+                  onChange={handleEditChange}
+                  placeholder="Avatar URL"
+                />
+                <select
+                  name="role"
+                  value={editingUser.role}
+                  onChange={handleEditChange}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <label>
+                  Active:
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={!!editingUser.is_active}
+                    onChange={handleEditChange}
+                  />
+                </label>
                 <button type="submit">Save</button>
                 <button type="button" onClick={cancelEdit}>
                   Cancel
@@ -80,8 +107,12 @@ export default function AdminUsers() {
             ) : (
               <>
                 <div>
-                  <strong>{u.name}</strong>
-                  <div className="muted">{u.email}</div>
+                  <strong>{u.username}</strong> <span className="muted">({u.role})</span><br />
+                  <span>Email: {u.email}</span><br />
+                  {u.avatar && <span>Avatar: <a href={u.avatar} target="_blank" rel="noopener noreferrer">View</a></span>}<br />
+                  <span>Active: {u.is_active ? "Yes" : "No"}</span><br />
+                  <span>Created: {u.created_at}</span><br />
+                  <span>Updated: {u.updated_at}</span>
                 </div>
                 <div className="actions">
                   <button onClick={() => setEditingUser(u)}>Edit</button>

@@ -1,63 +1,149 @@
+
 import React, { useState, useEffect, useMemo } from "react";
 
 export default function AdminPlaces() {
   const [places, setPlaces] = useState([]);
   const [query, setQuery] = useState("");
-  const [filteredPlaces, setFilteredPlaces] = useState([]); // Stores filtered results
+  const [filteredPlaces, setFilteredPlaces] = useState([]);
+  const [editingPlace, setEditingPlace] = useState(null);
 
-  // Fetch places from backend API
   useEffect(() => {
     fetch("/api/places")
       .then((res) => res.json())
       .then((data) => {
         setPlaces(data);
-        setFilteredPlaces(data); // Initialize filteredPlaces with all places
+        setFilteredPlaces(data);
       })
       .catch((err) => console.error("Error fetching places:", err));
   }, []);
 
-  // Filter places based on query
   const handleSearch = () => {
     const q = query.trim().toLowerCase();
     if (!q) {
-      setFilteredPlaces(places); // Show all places if query is empty
+      setFilteredPlaces(places);
     } else {
       setFilteredPlaces(
         places.filter((p) =>
-          [p.type, p.name, p.address, p.code].some((f) =>
-            f.toLowerCase().includes(q)
+          [p.category, p.name, p.location_address, p.description].some((f) =>
+            f && f.toLowerCase().includes(q)
           )
         )
       );
     }
   };
 
-  // Handle Enter key press for search
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
+    if (e.key === "Enter") handleSearch();
   };
 
-  const attractions = useMemo(
-    () => filteredPlaces.filter((p) => p.type === "Attraction"),
-    [filteredPlaces]
-  );
-  const restaurants = useMemo(
-    () => filteredPlaces.filter((p) => p.type === "Restaurant"),
-    [filteredPlaces]
-  );
+  const handleEditChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditingPlace((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
 
-  // Delete a place via backend API
+  const saveEdit = (e) => {
+    e.preventDefault();
+    fetch(`/api/places/${editingPlace.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingPlace),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setEditingPlace(null);
+        // Auto-refresh: re-fetch places from backend
+        fetch("/api/places")
+          .then((res) => res.json())
+          .then((data) => {
+            setPlaces(data);
+            setFilteredPlaces(data);
+          });
+      })
+      .catch((err) => console.error("Error updating place:", err));
+  };
+
+  const cancelEdit = () => setEditingPlace(null);
+
   const deletePlace = (id) => {
     fetch(`/api/places/${id}`, { method: "DELETE" })
       .then((res) => res.json())
       .then(() => {
         setPlaces((prev) => prev.filter((p) => p.id !== id));
-        setFilteredPlaces((prev) => prev.filter((p) => p.id !== id)); // Update filteredPlaces
+        setFilteredPlaces((prev) => prev.filter((p) => p.id !== id));
       })
       .catch((err) => console.error("Error deleting place:", err));
   };
+
+  const attractions = useMemo(
+    () => filteredPlaces.filter((p) => p.category === "Attraction"),
+    [filteredPlaces]
+  );
+  const restaurants = useMemo(
+    () => filteredPlaces.filter((p) => p.category === "Restaurant"),
+    [filteredPlaces]
+  );
+
+  const renderPlaceRow = (place) => (
+    <li key={place.id} className="list-row">
+      {editingPlace && editingPlace.id === place.id ? (
+        <form onSubmit={saveEdit} className="edit-form">
+          <input name="name" value={editingPlace.name} onChange={handleEditChange} placeholder="Name" required />
+          <input name="description" value={editingPlace.description} onChange={handleEditChange} placeholder="Description" />
+          <input name="location_address" value={editingPlace.location_address} onChange={handleEditChange} placeholder="Address" />
+          <input name="location_lat" value={editingPlace.location_lat} onChange={handleEditChange} placeholder="Latitude" />
+          <input name="location_lng" value={editingPlace.location_lng} onChange={handleEditChange} placeholder="Longitude" />
+          <input name="image" value={editingPlace.image || ''} onChange={handleEditChange} placeholder="Image URL" />
+          <label>
+            Active:
+            <select
+              name="is_active"
+              value={editingPlace.is_active ? "true" : "false"}
+              onChange={e => handleEditChange({
+                target: {
+                  name: "is_active",
+                  value: e.target.value === "true",
+                  type: "checkbox"
+                }
+              })}
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+          <button type="submit">Save</button>
+                  <td>
+                    {place.image ? (
+                      <a href={place.image} target="_blank" rel="noopener noreferrer">{place.image}</a>
+                    ) : (
+                      <span style={{color: 'gray'}}>No image</span>
+                    )}
+                  </td>
+        </form>
+      ) : (
+        <>
+          <div>
+            <strong>{place.category}</strong> — {place.name}
+            <div className="muted">
+              <span>Description: {place.description}</span><br />
+              <span>Address: {place.location_address}</span><br />
+              <span>Lat/Lng: {place.location_lat}, {place.location_lng}</span><br />
+              {place.image && <span>Image: <a href={place.image} target="_blank" rel="noopener noreferrer">View</a></span>}<br />
+              <span>Active: {place.is_active ? "Yes" : "No"}</span><br />
+              <span>Created: {place.created_at}</span><br />
+              <span>Updated: {place.updated_at}</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button onClick={() => setEditingPlace(place)}>Edit</button>
+            <button className="danger" onClick={() => deletePlace(place.id)}>Delete</button>
+          </div>
+        </>
+      )}
+    </li>
+  );
 
   return (
     <div className="container">
@@ -67,7 +153,7 @@ export default function AdminPlaces() {
           placeholder="Search by type/name/address/code"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyPress={handleKeyPress} // Trigger search on Enter key press
+          onKeyPress={handleKeyPress}
           style={{ width: "80%", padding: "0.5rem", boxSizing: "border-box" }}
         />
         <button
@@ -91,19 +177,7 @@ export default function AdminPlaces() {
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3>Attractions</h3>
         <ul className="list">
-          {attractions.map((place) => (
-            <li key={place.id} className="list-row">
-              <div>
-                <strong>{place.type}</strong> — {place.name}
-                <div className="muted">
-                  {place.address} · {place.code}
-                </div>
-              </div>
-              <button className="danger" onClick={() => deletePlace(place.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
+          {attractions.map(renderPlaceRow)}
           {attractions.length === 0 && <li className="muted">No results</li>}
         </ul>
       </div>
@@ -112,22 +186,11 @@ export default function AdminPlaces() {
       <div className="card" style={{ marginTop: "1rem" }}>
         <h3>Restaurants</h3>
         <ul className="list">
-          {restaurants.map((place) => (
-            <li key={place.id} className="list-row">
-              <div>
-                <strong>{place.type}</strong> — {place.name}
-                <div className="muted">
-                  {place.address} · {place.code}
-                </div>
-              </div>
-              <button className="danger" onClick={() => deletePlace(place.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
+          {restaurants.map(renderPlaceRow)}
           {restaurants.length === 0 && <li className="muted">No results</li>}
         </ul>
       </div>
     </div>
   );
+
 }

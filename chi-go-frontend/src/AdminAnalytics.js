@@ -1,93 +1,129 @@
+
+// AdminAnalytics: Dashboard for admin analytics
 import React, { useState, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
-import "chart.js/auto"; // Required for Chart.js
+import "chart.js/auto";
 
 export default function AdminAnalytics() {
+  // State for analytics data
   const [totalUsers, setTotalUsers] = useState(0);
-  const [rankings, setRankings] = useState({ attractions: [], restaurants: [] });
+  const [attractions, setAttractions] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Fetch total users from backend
+  // Fetch analytics data from backend
   useEffect(() => {
-    fetch("/api/users/count")
-      .then((res) => res.json())
-      .then((data) => setTotalUsers(data.count))
-      .catch((err) => console.error("Error fetching total users:", err));
+    async function fetchAnalytics() {
+      try {
+        setLoading(true);
+        setError("");
+        // Fetch total users
+        const userRes = await fetch("/api/users/count");
+        const userData = await userRes.json();
+        setTotalUsers(userData.count || 0);
+
+        // Fetch rankings
+        const rankRes = await fetch("/api/places/rankings");
+        const rankData = await rankRes.json();
+        setAttractions(rankData.attractions || []);
+        setRestaurants(rankData.restaurants || []);
+      } catch (err) {
+        setError("Failed to load analytics data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAnalytics();
   }, []);
 
-  // Fetch rankings from backend
-  useEffect(() => {
-    fetch("/api/places/rankings")
-      .then((res) => res.json())
-      .then((data) => setRankings(data))
-      .catch((err) => console.error("Error fetching rankings:", err));
-  }, []);
-
-  // Prepare data for bar charts
+  // Prepare chart data
   const attractionData = {
-    labels: rankings.attractions.map((a) => a.name),
+    labels: attractions.map((a) => a.name),
     datasets: [
       {
-        label: "Number of Users",
-        data: rankings.attractions.map((a) => a.userCount),
+        label: "Users",
+        data: attractions.map((a) => a.userCount),
         backgroundColor: "rgba(75, 192, 192, 0.6)",
       },
     ],
   };
-
   const restaurantData = {
-    labels: rankings.restaurants.map((r) => r.name),
+    labels: restaurants.map((r) => r.name),
     datasets: [
       {
-        label: "Number of Users",
-        data: rankings.restaurants.map((r) => r.userCount),
+        label: "Users",
+        data: restaurants.map((r) => r.userCount),
         backgroundColor: "rgba(255, 99, 132, 0.6)",
       },
     ],
   };
 
+  // Chart options: y-axis only shows integer ticks
+  const chartOptions = {
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: function(value) {
+            if (Number.isInteger(value)) return value;
+          }
+        }
+      }
+    }
+  };
+
   return (
     <div className="container">
       <h2>Admin · Analytics</h2>
+      {loading ? (
+        <div>Loading analytics...</div>
+      ) : error ? (
+        <div style={{ color: "red" }}>{error}</div>
+      ) : (
+        <>
+          {/* Total Users */}
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
+            <h3>Total Users</h3>
+            <p>{totalUsers}</p>
+          </div>
 
-      {/* Total Users */}
-      <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
-        <h3>Total Users</h3>
-        <p>{totalUsers}</p>
-      </div>
+          {/* Top Attractions */}
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
+            <h3>Top Attractions</h3>
+            <ul>
+              {attractions.map((a, idx) => (
+                <li key={idx}>
+                  {idx + 1}. {a.name} — Users: {a.userCount}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-      {/* Rankings */}
-      <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
-        <h3>Top Attractions</h3>
-        <ul>
-          {rankings.attractions.map((a, index) => (
-            <li key={index}>
-              {index + 1}. {a.name} - Users: {a.userCount}
-            </li>
-          ))}
-        </ul>
-      </div>
+          {/* Top Restaurants */}
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
+            <h3>Top Restaurants</h3>
+            <ul>
+              {restaurants.map((r, idx) => (
+                <li key={idx}>
+                  {idx + 1}. {r.name} — Users: {r.userCount}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-      <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
-        <h3>Top Restaurants</h3>
-        <ul>
-          {rankings.restaurants.map((r, index) => (
-            <li key={index}>
-              {index + 1}. {r.name} - Users: {r.userCount}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Graphs */}
-      <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
-        <h3>Attractions Popularity</h3>
-        <Bar data={attractionData} />
-      </div>
-
-      <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
-        <h3>Restaurants Popularity</h3>
-        <Bar data={restaurantData} />
-      </div>
+          {/* Charts */}
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
+            <h3>Attractions Popularity</h3>
+            <Bar data={attractionData} options={chartOptions} />
+          </div>
+          <div className="card" style={{ marginBottom: "1rem", padding: "1rem" }}>
+            <h3>Restaurants Popularity</h3>
+            <Bar data={restaurantData} options={chartOptions} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

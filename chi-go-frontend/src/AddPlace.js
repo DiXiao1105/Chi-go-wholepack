@@ -3,10 +3,13 @@ import "./AddPlace.css";
 
 export default function AddPlace() {
   const [form, setForm] = useState({
-    type: "Attraction",
+    category: "Attraction",
     name: "",
-    address: "",
-    code: "",
+    description: "",
+    image: "",
+    location_lat: "",
+    location_lng: "",
+    location_address: "",
   });
 
   const handleChange = (e) => {
@@ -16,15 +19,29 @@ export default function AddPlace() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Convert lat/lng to float
+    const payload = {
+      ...form,
+      location_lat: parseFloat(form.location_lat),
+      location_lng: parseFloat(form.location_lng),
+    };
     fetch("/api/places", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     })
       .then((res) => res.json())
       .then((data) => {
         alert("Place added successfully!");
-        setForm({ type: "Attraction", name: "", address: "", code: "" });
+        setForm({
+          category: "Attraction",
+          name: "",
+          description: "",
+          image: "",
+          location_lat: "",
+          location_lng: "",
+          location_address: "",
+        });
       })
       .catch((err) => console.error("Error adding place:", err));
   };
@@ -34,10 +51,10 @@ export default function AddPlace() {
       <h2 className="form-title">Admin &middot; Add Attraction/Restaurant</h2>
       <form onSubmit={handleSubmit} className="card add-place-form">
         <div className="form-group">
-          <label>Type</label>
+          <label>Category</label>
           <select
-            name="type"
-            value={form.type}
+            name="category"
+            value={form.category}
             onChange={handleChange}
             className="form-select"
           >
@@ -57,23 +74,59 @@ export default function AddPlace() {
           />
         </div>
         <div className="form-group">
-          <label>Address</label>
-          <input
-            name="address"
-            value={form.address}
+          <label>Description</label>
+          <textarea
+            name="description"
+            value={form.description}
             onChange={handleChange}
-            placeholder="e.g., 123 Main St"
+            placeholder="Short description"
             required
             className="form-input"
           />
         </div>
         <div className="form-group">
-          <label>Google Place ID</label>
+          <label>Image URL</label>
           <input
-            name="code"
-            value={form.code}
+            name="image"
+            value={form.image}
             onChange={handleChange}
-            placeholder="e.g., AT123"
+            placeholder="https://..."
+            className="form-input"
+          />
+        </div>
+        <div className="form-group">
+          <label>Latitude</label>
+          <input
+            name="location_lat"
+            value={form.location_lat}
+            onChange={handleChange}
+            placeholder="e.g., 41.8781"
+            required
+            className="form-input"
+            type="number"
+            step="any"
+          />
+        </div>
+        <div className="form-group">
+          <label>Longitude</label>
+          <input
+            name="location_lng"
+            value={form.location_lng}
+            onChange={handleChange}
+            placeholder="e.g., -87.6298"
+            required
+            className="form-input"
+            type="number"
+            step="any"
+          />
+        </div>
+        <div className="form-group">
+          <label>Address</label>
+          <input
+            name="location_address"
+            value={form.location_address}
+            onChange={handleChange}
+            placeholder="e.g., 123 Main St"
             required
             className="form-input"
           />

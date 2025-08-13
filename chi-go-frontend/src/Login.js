@@ -14,10 +14,10 @@ export default function Login({ setIsLoggedIn }) {
     e.preventDefault();
     if (mode === "login") {
       // Login logic
-      fetch("/api/login", {
+      fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, username, password }),
+        body: JSON.stringify({ username, password }),
       })
         .then((res) => {
           if (res.ok) {
@@ -40,14 +40,17 @@ export default function Login({ setIsLoggedIn }) {
         });
     } else {
       // Register logic
-      fetch("/api/users", {
+      fetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, name: username, email, password }),
+        body: JSON.stringify({ username, email, password }),
       })
         .then((res) => {
           if (res.ok) {
             return res.json();
+          } else if (res.status === 409) {
+            // Email already registered
+            throw new Error("409");
           } else {
             throw new Error("Registration failed");
           }
@@ -57,8 +60,12 @@ export default function Login({ setIsLoggedIn }) {
           setMode("login"); // Switch back to login mode
         })
         .catch((err) => {
+          if (err.message === "409") {
+            alert("Email has been registered!");
+          } else {
+            alert("Registration failed!");
+          }
           console.error("Error registering user:", err);
-          alert("Registration failed!");
         });
     }
   };
