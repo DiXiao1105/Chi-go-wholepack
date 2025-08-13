@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 CORS(app, origins=[r"http://localhost:\d+", r"http://127.0.0.1:\d+"], supports_credentials=True)  # Allow all origins by default
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password123@localhost:5432/chi-go-test'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://capstone:Group4!!!@capstone-nu.postgres.database.azure.com:5432/chi-go-database?sslmode=require'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -610,10 +610,14 @@ def get_restaurants():
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     posts = Post.query.all()
+    # Fetch all user ids in posts
+    user_ids = {post.user_id for post in posts}
+    users = {u.id: u.username for u in User.query.filter(User.id.in_(user_ids)).all()}
     return jsonify([
         {
             "id": post.id,
             "user_id": post.user_id,
+            "username": users.get(post.user_id, "User"),
             "title": post.title,
             "description": post.description,
             "checklist": post.checklist,
