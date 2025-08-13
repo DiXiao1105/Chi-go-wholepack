@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 
-export default function Login({ setIsLoggedIn }) {
+export default function Login({ setIsLoggedIn, setUsername }) {
   const [mode, setMode] = useState("login"); // "login" or "register"
   const [role, setRole] = useState("admin");
-  const [username, setUsername] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
   const [email, setEmail] = useState(""); // Only used in register mode
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function Login({ setIsLoggedIn }) {
       fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+  body: JSON.stringify({ username: usernameInput, password }),
       })
         .then((res) => {
           if (res.ok) {
@@ -28,6 +28,7 @@ export default function Login({ setIsLoggedIn }) {
         })
         .then((data) => {
           setIsLoggedIn(true);
+          if (setUsername) setUsername(data.username || "");
           if (role === "admin") {
             navigate("/admin/users"); // Redirect to admin dashboard
           } else {
@@ -43,7 +44,7 @@ export default function Login({ setIsLoggedIn }) {
       fetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
+  body: JSON.stringify({ username: usernameInput, email, password }),
       })
         .then((res) => {
           if (res.ok) {
@@ -106,8 +107,8 @@ export default function Login({ setIsLoggedIn }) {
           <label>Username:</label>
           <input
             type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={usernameInput}
+            onChange={(e) => setUsernameInput(e.target.value)}
             required
           />
         </div>
